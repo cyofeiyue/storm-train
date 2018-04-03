@@ -1,6 +1,5 @@
 package com.feiyue.bigdata.integration.redis;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.redis.bolt.RedisStoreBolt;
@@ -20,12 +19,9 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.Utils;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 
 public class LocalWordCountReidsStormTopology {
@@ -36,7 +32,7 @@ public class LocalWordCountReidsStormTopology {
      * 读取文件的每一行并发出line
      */
     static class DataSourceSpout extends BaseRichSpout{
-        SpoutOutputCollector collector;
+        private SpoutOutputCollector collector;
 
         @Override
         public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
@@ -44,26 +40,36 @@ public class LocalWordCountReidsStormTopology {
 
         }
 
+//        @Override
+//        public void nextTuple() {
+//            Collection<File> files = FileUtils.listFiles(new File("/Users/nisaisai/IdeaProjects/hadoop-shizhan/data/storm-data"),new String[]{"txt"},true);
+//            for (File file : files){
+//                try {
+//                    List<String> lines = FileUtils.readLines(file);
+//                    for(String line : lines){
+//                        //发出每一个文件的每一行
+//                        this.collector.emit(new Values(line));
+//                    }
+//
+//                    //一个文件的内容全部发送完以后，重命名文件名
+//                    //FileUtils.moveFile(file,new File(file.getAbsolutePath() + System.currentTimeMillis()));
+//                    Utils.sleep(1000);
+//
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
+
+        //随机数组
+        public static String[] words = new String[]{"apple","green","blue","aaa","bbb","asdf","orange"};
+
         @Override
         public void nextTuple() {
-            Collection<File> files = FileUtils.listFiles(new File("/Users/nisaisai/IdeaProjects/hadoop-shizhan/data/storm-data"),new String[]{"txt"},true);
-            for (File file : files){
-                try {
-                    List<String> lines = FileUtils.readLines(file);
-                    for(String line : lines){
-                        //发出每一个文件的每一行
-                        this.collector.emit(new Values(line));
-                    }
-
-                    //一个文件的内容全部发送完以后，重命名文件名
-                    //FileUtils.moveFile(file,new File(file.getAbsolutePath() + System.currentTimeMillis()));
-                    Utils.sleep(1000);
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
+            String word = words[new Random().nextInt(words.length)];
+            this.collector.emit(new Values(word));
+            Utils.sleep(1000);
+            System.out.println("---------------word:" + word);
         }
 
         @Override
@@ -79,7 +85,7 @@ public class LocalWordCountReidsStormTopology {
      *
      */
     static class SplitBolt extends BaseRichBolt{
-        OutputCollector collector;
+       private OutputCollector collector;
         @Override
         public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
             this.collector = collector;
@@ -106,8 +112,8 @@ public class LocalWordCountReidsStormTopology {
      */
     static class CountBolt extends BaseRichBolt{
 
-        Map<String,Integer> map = new HashMap<String, Integer>();
-        OutputCollector collector;
+        private Map<String,Integer> map = new HashMap<String, Integer>();
+        private OutputCollector collector;
 
         @Override
         public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
@@ -171,7 +177,7 @@ public class LocalWordCountReidsStormTopology {
         builder.setBolt("CountBolt",new CountBolt()).shuffleGrouping("SplitBolt");
 
         JedisPoolConfig poolConfig = new JedisPoolConfig.Builder()
-                .setHost("192.168.21.170").setPort(6379).build();
+                .setHost("192.168.21.171").setPort(6379).build();
         RedisStoreMapper storeMapper = new WordCountStoreMapper();
         RedisStoreBolt storeBolt = new RedisStoreBolt(poolConfig, storeMapper);
 
